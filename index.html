@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAProxy Metrics Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            text-align: center;
+        }
+        .metric-section {
+            margin-bottom: 20px;
+        }
+        .metric-section h2 {
+            margin: 10px 0;
+        }
+        .metric-section p {
+            margin: 5px 0;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>HAProxy Metrics Parser</h1>
+    <form id="curlForm">
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url" required>
+        <br>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+    <div id="output"></div>
+
+    <script>
+        document.getElementById('curlForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const url = document.getElementById('url').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const curlCommand = `curl -u ${username}:${password} ${url}`;
+
+            fetch('/curl', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ command: curlCommand })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const outputElement = document.getElementById('output');
+                outputElement.innerHTML = parseHAProxyMetrics(data.output);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('output').textContent = 'Error performing cURL request';
+            });
+        });
+
+        function parseHAProxyMetrics(data) {
+            const lines = data.split('\n');
+            let parsedData = '';
+            let currentMetric = '';
+
+            lines.forEach(line => {
+                if (line.startsWith('# HELP')) {
+                    currentMetric = line.substring(7);
+                    parsedData += `<div class="metric-section"><h2>${currentMetric}</h2>\n`;
+                } else if (line.startsWith('# TYPE')) {
+                    parsedData += `<p><strong>${line.substring(7)}</strong></p>\n`;
+                } else if (line && !line.startsWith('#')) {
+                    parsedData += `<pre>${line}</pre>\n`;
+                }
+            });
+
+            return parsedData;
+        }
+    </script>
+</body>
+</html>
